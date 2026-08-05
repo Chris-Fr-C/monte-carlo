@@ -1,10 +1,11 @@
 /// Life is too short to do proper versioning for a local db.
 /// Just build or clean the db cause it's small anyway.
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, DbErr, EntityTrait, Schema};
+use crate::exceptions;
 
 use crate::database::models::quote;
 
-pub async fn setup_database(db: &DatabaseConnection) -> Result<(), DbErr> {
+pub async fn setup_database(db: &DatabaseConnection) -> Result<(), exceptions::AppError> {
     if db.get_database_backend() == DbBackend::Sqlite {
         // Use execute_unprepared for raw SQL string commands like PRAGMA
         db.execute_unprepared("PRAGMA foreign_keys = ON;").await?;

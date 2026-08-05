@@ -1,6 +1,5 @@
 pub mod historical {
     use rust_decimal::prelude::ToPrimitive;
-    use sea_orm::DbErr;
 use tracing::info;
     use yfinance_rs::{Interval, Range, Ticker, YfClient};
 
