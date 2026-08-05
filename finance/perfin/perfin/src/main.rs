@@ -1,8 +1,11 @@
 mod database;
 mod sources;
 use clap::{Parser, Subcommand};
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::Database;
 use tracing::info;
+
+use crate::database::operations::Client;
+
 #[derive(Parser)]
 #[command(name = "my_app", author, version, about = "CLI app with multiple entrypoints", long_about = None)]
 struct Cli {
@@ -15,7 +18,7 @@ enum Commands {
     /// Fetch data for watched symbols.
     Sync {
         #[arg(short, long, default_value = "sqlite://perfin.sqlite")]
-        db: String
+        db: String,
     },
 
     /// Single fetch of stock.
@@ -24,7 +27,7 @@ enum Commands {
         symbol: String,
 
         #[arg(short, long, default_value = "sqlite://perfin.sqlite")]
-        db: String
+        db: String,
     },
 
     /// Run background queue processor
@@ -32,8 +35,7 @@ enum Commands {
         #[arg(short, long, default_value_t = 4)]
         threads: usize,
         #[arg(short, long, default_value = "sqlite://perfin.sqlite")]
-        db: String
-
+        db: String,
     },
 }
 
@@ -44,12 +46,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //
 
     match cli.command {
-        Commands::Sync {db} => {
+        Commands::Sync { db } => {
             let con = Database::connect(db).await?;
             database::init::setup_database(&con).await?;
         }
         Commands::SingleSync { symbol, db } => {
+            let con = Database::connect(db.clone()).await?;
             info!("Starting single synchronization for {}", symbol);
+            database::init::setup_database(&con).await?;
+
+            let db_client = Client::new(&db).await?;
+            sources::yahoo::historical::fetch_and_upsert(db_client, "NESN.SW".to_string()).await?;
         }
 
         _ => {

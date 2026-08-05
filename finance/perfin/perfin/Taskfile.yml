@@ -18,11 +18,11 @@ tasks:
       - echo "Database initialized at {{.DB_PATH}}"
     silent: true
 
-  default:
+  sync:
     desc: Print a greeting message
     deps:
       - db:init
     cmds:
       - |
-        cargo run -- sync --db "{{.DB_URL}}"
+        cargo run -- single-sync --db "{{.DB_URL}}"
     silent: true

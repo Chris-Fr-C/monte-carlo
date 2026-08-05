@@ -10,7 +10,7 @@ pub mod quote {
         pub ts: DateTime<Utc>,
         #[sea_orm(primary_key, indexed)]
         pub symbol: String,
-        #[sea_orm()]
+        #[sea_orm(primary_key)]
         pub currency: String,
 
         #[sea_orm()]
@@ -24,7 +24,7 @@ pub mod quote {
         #[sea_orm()]
         pub adjusted_close: Decimal,
         #[sea_orm()]
-        pub volume: i32
+        pub volume: i32,
     }
 
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
