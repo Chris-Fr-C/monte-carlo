@@ -6,11 +6,12 @@ defmodule PostProcess.Listener do
   @impl true
   def init(_) do
     # Register to receive stock updates.
-    Registry.register(App.StockRegistry, "stock_updates", [])
+    Registry.register(Orchestration.StockRegistry, "stock_updates", [])
     # result + initial state
     {:ok, %{}}
   end
 
+  @impl true
   def handle_info({:stock_data, ticker, data}, state) do
     IO.inspect({ticker, data}, label: "Received Update")
     {:noreply, state}

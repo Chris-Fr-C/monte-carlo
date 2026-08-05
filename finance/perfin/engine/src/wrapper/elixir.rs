@@ -18,8 +18,7 @@ static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
 });
 
 // the nif gotta be in sync
-// 3. The Rustler NIF wrapper (Regular `fn`, NOT `async fn`)
-#[rustler::nif(schedule = "DirtyIo")]
+#[rustler::nif(schedule="DirtyIo")]
 pub fn fetch(db_url: String, symbol: String) -> NifResult<()> {
     // 4. Use the runtime to await/block on the async function
     let res: Result<(), AppError> = RUNTIME.block_on(async {
@@ -33,7 +32,7 @@ pub fn fetch(db_url: String, symbol: String) -> NifResult<()> {
     Ok(())
 }
 
-#[rustler::nif(schedule = "DirtyIo")]
+#[rustler::nif(schedule="DirtyIo")]
 pub fn init_db(db_url: String) -> NifResult<()> {
     let result = RUNTIME.block_on(async {
         let con = Database::connect(db_url)
@@ -44,3 +43,10 @@ pub fn init_db(db_url: String) -> NifResult<()> {
     });
     result
 }
+
+
+fn load(_env: rustler::Env, _term: rustler::Term) -> bool {
+    true
+}
+
+rustler::init!("Elixir.Orchestration.Engine", load = load);

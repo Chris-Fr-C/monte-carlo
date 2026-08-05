@@ -1,6 +1,5 @@
 mod database;
 mod sources;
-mod wrapper;
 mod exceptions;
 use clap::{Parser, Subcommand};
 use sea_orm::Database;

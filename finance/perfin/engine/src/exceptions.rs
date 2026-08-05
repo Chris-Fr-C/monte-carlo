@@ -5,7 +5,6 @@ use sea_orm::DbErr;
 // Really not motivated to find a cool name.
 #[derive(Debug, Clone)]
 pub struct AppError {
-    #[expect(unused)]
     msg: String,
 }
 
@@ -51,12 +50,14 @@ impl From<rustler::Error> for AppError {
 
 impl From<AppError> for rustler::Error {
     fn from(value: AppError) -> Self {
-       value.into()
+        rustler::Error::Term(Box::new(value.msg))
     }
 }
 
-impl From<Box<dyn std::error::Error>> for AppError{
+impl From<Box<dyn std::error::Error>> for AppError {
     fn from(value: Box<dyn std::error::Error>) -> Self {
-        AppError { msg: value.to_string() }
+        AppError {
+            msg: value.to_string(),
+        }
     }
 }

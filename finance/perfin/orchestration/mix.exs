@@ -3,7 +3,7 @@ defmodule Perforc.MixProject do
 
   def project do
     [
-      app: :perforc,
+      app: :orchestration,
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
@@ -23,6 +23,7 @@ defmodule Perforc.MixProject do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:rustler, "~> 0.30"},
     ]
   end
 end

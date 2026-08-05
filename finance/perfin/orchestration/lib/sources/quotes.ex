@@ -1,8 +1,9 @@
-defmodule  App.StockScheduler do
+defmodule Orchestration.StockScheduler do
   @moduledoc """
   This aims to provide a scheduler that will run nifs and fetch data twice per day.
   """
 use GenServer
+  require Logger
 
   @twelve_hours_ms 12 * 60 * 60 * 1000
   @default_stocks ["NESN.SW", ]
@@ -17,6 +18,10 @@ use GenServer
   def init(_opts) do
     # todo: Schedule the first run immediately (or adjust to a specific UTC time)
     send(self(), :fetch_all)
+
+
+    File.touch(Orchestration.Env.db_path())
+    Orchestration.Engine.init_db(Orchestration.Env.db_url())
     {:ok, %{stocks: @default_stocks}}
   end
 
@@ -25,7 +30,7 @@ use GenServer
     # Kick off asynchronous tasks for each stock so one slow NIF doesn't block the rest
     # here i call one nif per stock.
     Enum.each(state.stocks, fn ticker ->
-      Task.Supervisor.start_child(App.FetcherSupervisor, fn ->
+      Task.Supervisor.start_child(Orchestration.FetcherSupervisor, fn ->
         fetch_and_notify(ticker)
       end)
     end)
@@ -37,10 +42,10 @@ use GenServer
 
   defp fetch_and_notify(ticker) do
     # 1. Call your Rust NIF
-    case App.RustNif.fetch_stock_data(ticker) do
+    case Orchestration.Engine.fetch(Orchestration.Env.db_url(), ticker) do
       {:ok, data} ->
         # 2. Dispatch notification via Registry
-        Registry.dispatch(App.StockRegistry, "stock_updates", fn entries ->
+        Registry.dispatch(Orchestration.StockRegistry, "stock_updates", fn entries ->
           for {pid, _value} <- entries, do: send(pid, {:stock_data, ticker, data})
         end)
 
@@ -52,7 +57,7 @@ use GenServer
 end
 
 
-defmodule App.StockFetcher do
+defmodule Orchestration.StockFetcher do
   @moduledoc """
   This will supervise the run of a nif to fetch data for a specific stock.
   """

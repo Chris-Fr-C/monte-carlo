@@ -8,6 +8,9 @@ vars:
   DB_URL: "sqlite://{{.DB_PATH}}"
 
 tasks:
+  db:path:
+    cmds:
+      - echo "{{.DB_URL}}"
   db:init:
     desc: Ensure database file and parent directory exist
     status:
