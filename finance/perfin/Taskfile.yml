@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  DATABASE_PATH: "{{.TASKFILE_DIR}}/perfin.sqlite"
+  DATABASE_URL: "sqlite://{{.DATABASE_PATH}}?mode=rwc"
+
+tasks:
+  default:
+    desc: Print a greeting message
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true

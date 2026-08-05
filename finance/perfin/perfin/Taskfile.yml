@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  GREETING: Hello, world!
+  DB_PATH: "{{.TASKFILE_DIR}}/perfin.sqlite"
+  DB_URL: "sqlite://{{.DB_PATH}}"
+
+tasks:
+  db:init:
+    desc: Ensure database file and parent directory exist
+    status:
+      - test -f "{{.DB_PATH}}"
+    cmds:
+      - mkdir -p "$(dirname "{{.DB_PATH}}")"
+      - touch "{{.DB_PATH}}"
+      - echo "Database initialized at {{.DB_PATH}}"
+    silent: true
+
+  default:
+    desc: Print a greeting message
+    deps:
+      - db:init
+    cmds:
+      - |
+        cargo run -- sync --db "{{.DB_URL}}"
+    silent: true
