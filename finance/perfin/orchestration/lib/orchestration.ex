@@ -1,12 +1,18 @@
 defmodule Orchestration.Supervisor do
-  def start(_type, _args) do
+  use Supervisor
+
+  def start_link(init_arg) do
+    Supervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
+  end
+
+  @impl true
+  def init(_init_arg) do
     children = [
       {Registry, keys: :duplicate, name: Orchestration.StockRegistry},
       {Task.Supervisor, name: Orchestration.FetcherSupervisor},
       Orchestration.StockScheduler
     ]
 
-    opts = [strategy: :one_for_one, name: Orchestration.Supervisor]
-    Supervisor.start_link(children, opts)
+    Supervisor.init(children, strategy: :one_for_one)
   end
 end

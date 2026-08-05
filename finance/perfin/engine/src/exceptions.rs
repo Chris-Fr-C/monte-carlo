@@ -1,5 +1,6 @@
 use core::fmt;
 
+use rustler::Atom;
 use sea_orm::DbErr;
 
 // Really not motivated to find a cool name.

@@ -17,33 +17,39 @@ static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
         .unwrap()
 });
 
+mod engine_atoms {
+
+    rustler::atoms! {
+        ok,
+    }
+}
+
 // the nif gotta be in sync
-#[rustler::nif(schedule="DirtyIo")]
-pub fn fetch(db_url: String, symbol: String) -> NifResult<()> {
+#[rustler::nif(schedule = "DirtyIo")]
+pub fn fetch(db_url: String, symbol: String) -> NifResult<rustler::Atom> {
     // 4. Use the runtime to await/block on the async function
-    let res: Result<(), AppError> = RUNTIME.block_on(async {
+    let result: Result<(), AppError> = RUNTIME.block_on(async {
         // something_async().await
         let db_client = Client::new(&db_url).await?;
         sources::yahoo::historical::fetch_and_upsert(db_client, symbol).await?;
 
         Ok(())
     });
-    res?;
-    Ok(())
+    result?;
+    Ok(engine_atoms::ok())
 }
 
-#[rustler::nif(schedule="DirtyIo")]
-pub fn init_db(db_url: String) -> NifResult<()> {
-    let result = RUNTIME.block_on(async {
+#[rustler::nif(schedule = "DirtyIo")]
+pub fn init_db(db_url: String) -> NifResult<rustler::Atom> {
+    let result: Result<rustler::Atom, rustler::Error> = RUNTIME.block_on(async {
         let con = Database::connect(db_url)
             .await
             .map_err(|err| AppError::from(err))?;
         database::init::setup_database(&con).await?;
-        Ok(())
+        Ok(engine_atoms::ok())
     });
     result
 }
-
 
 fn load(_env: rustler::Env, _term: rustler::Term) -> bool {
     true
