@@ -29,3 +29,12 @@ tasks:
       - |
         cargo run -- single-sync --db "{{.DB_URL}}"
     silent: true
+
+
+
+  helper-train-data:
+    desc: Make csv from sqlite
+    cmds:
+      - |
+        sqlite3 -csv {{.DB_PATH}} "SELECT ts, symbol, currency, open, high, low, close, adjusted_close, volume from quote ORDER BY ts ASC LIMIT 50;" > data.csv
+      - head data.csv
