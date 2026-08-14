@@ -1,4 +1,5 @@
 use crate::database::models;
+use chrono::Utc;
 use sea_orm::{sea_query::OnConflict, *};
 
 pub struct Client {
@@ -43,5 +44,25 @@ impl Client {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn get_quotes(
+        &self,
+        symbol: String,
+        since: chrono::Duration,
+        now: chrono::DateTime<Utc>,
+    ) -> Result<Vec<models::quote::Model>, DbErr> {
+        Ok(models::quote::Entity
+            .select()
+            .filter(
+                models::quote::Column::Symbol.eq(symbol).and(
+                    models::quote::Column::Ts
+                        .gt(now - since)
+                        .and(models::quote::Column::Ts.lte(now)),
+                ),
+            )
+            .order_by_asc(models::quote::Column::Ts)
+            .all(&self.db)
+            .await?)
     }
 }
