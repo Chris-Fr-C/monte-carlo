@@ -2,4 +2,6 @@ mod database;
 mod sources;
 mod wrapper;
 mod exceptions;
-mod analysis;
+mod frames;
+mod strategy;
+mod mocks;

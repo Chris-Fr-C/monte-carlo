@@ -1,7 +1,9 @@
 mod database;
 mod sources;
 mod exceptions;
+mod strategy;
 mod mocks;
+mod frames;
 use clap::{Parser, Subcommand};
 use sea_orm::Database;
 use tracing::info;

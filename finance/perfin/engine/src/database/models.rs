@@ -1,6 +1,6 @@
 pub mod quote {
-    use rust_decimal::Decimal;
     use chrono::{DateTime, Utc};
+    use rust_decimal::Decimal;
     use sea_orm::entity::prelude::*;
 
     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]

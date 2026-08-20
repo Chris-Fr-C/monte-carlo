@@ -1,0 +1,24 @@
+quote: {
+  shape: sql_table
+  # This is defined using the shorthand syntax for labels discussed in the containers section.
+  # But here it's for the type of a constraint.
+  # The id field becomes a map that looks like {type: int; constraint: primary_key}
+  ts: timestamp with time zone {constraint: primary_key}
+  symbol: varchar {constraint: primary_key}
+  currency: varchar {constraint: primary_key}
+
+  open: Decimal
+  high: Decimal
+  low: Decimal
+  close: Decimal
+  adjusted_close: Decimal
+}
+
+signal: {
+  shape: sql_table
+
+  ts: Timestamp with time zone (constraint: primary key)
+  symbol: Varchar
+  name: (constraint: primary key)
+  category: UP|DOWN|HIGH_VOLATILIY
+}

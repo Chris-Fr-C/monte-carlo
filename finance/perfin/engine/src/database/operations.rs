@@ -1,12 +1,19 @@
 use crate::database::models;
-use chrono::Utc;
+use crate::exceptions::AppError;
+use crate::frames::quotes;
+use chrono::{DateTime, Duration, Utc};
+use polars::prelude::*;
+use polars::{
+    df,
+    frame::{DataFrame, row::Row},
+};
 use sea_orm::{sea_query::OnConflict, *};
+use std::{iter::from_fn, vec};
 
 pub struct Client {
-    db: DbConn,
+    pub db: DbConn,
 }
 impl Client {
-
     /// Creates the client with provided dsn.
     /// Recommended to use sqlite.
     ///
@@ -18,7 +25,6 @@ impl Client {
             db: Database::connect(db_url).await?,
         })
     }
-
 
     /// Insert quotes of a symbol into the database.
     ///
@@ -63,8 +69,8 @@ impl Client {
     pub async fn get_quotes(
         &self,
         symbol: String,
-        since: chrono::Duration,
-        now: chrono::DateTime<Utc>,
+        since: Duration,
+        now: DateTime<Utc>,
     ) -> Result<Vec<models::quote::Model>, DbErr> {
         Ok(models::quote::Entity
             .select()
@@ -79,14 +85,102 @@ impl Client {
             .all(&self.db)
             .await?)
     }
+
+    pub async fn get_quotes_df(
+        &self,
+        symbol: String,
+        since: Duration,
+        now: DateTime<Utc>,
+    ) -> Result<LazyFrame, AppError> {
+        let quotes = self.get_quotes(symbol, since, now).await?;
+
+        let mut opens = Vec::with_capacity(quotes.len());
+        let mut highs = Vec::with_capacity(quotes.len());
+        let mut lows = Vec::with_capacity(quotes.len());
+        let mut closes = Vec::with_capacity(quotes.len());
+        let mut ts = Vec::with_capacity(quotes.len());
+        let mut symbols = Vec::with_capacity(quotes.len());
+        let mut currencies = Vec::with_capacity(quotes.len());
+        let mut volumes = Vec::with_capacity(quotes.len());
+
+        for q in quotes {
+            opens.push(q.open);
+            highs.push(q.high);
+            lows.push(q.low);
+            closes.push(q.close);
+            ts.push(q.ts.timestamp_millis());
+            symbols.push(q.symbol);
+            currencies.push(q.currency);
+            volumes.push(q.volume);
+        }
+        let d = df![
+                quotes::Columns::Timestamp.as_str() => ts,
+                quotes::Columns::Symbol.as_str() => symbols,
+                quotes::Columns::Currency.as_str() => currencies,
+                quotes::Columns::Open.as_str() => opens,
+                quotes::Columns::High.as_str() => highs,
+                quotes::Columns::Low.as_str() => lows,
+                quotes::Columns::Close.as_str() => closes,
+                quotes::Columns::Volume.as_str() => volumes,
+        ];
+
+        Ok(d?
+            .lazy()
+            .with_column(
+                col(quotes::Columns::Timestamp)
+                .cast(
+                    DataType::Datetime(
+                        TimeUnit::Milliseconds,
+                        Some(TimeZone::UTC),
+                    )
+                )
+
+            )
+        )
+    }
 }
 
 
-pub mod testing {
-    use sea_orm::{DatabaseConnectionType::MockDatabaseConnection};
-    pub fn mock_client() -> super::Client{
-        super::Client{
-            db: MockDatabaseConnection.into()
-        }
+#[cfg(test)]
+mod test{
+    use super::*;
+    use crate::{mocks::mock_client, sources::yahoo::historical::fetch_and_upsert};
+    use chrono::TimeDelta;
+use rust_decimal::Decimal;
+
+    #[tokio::test]
+    async fn test_upsert(){
+        let client = mock_client();
+        let start : DateTime<Utc> = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00+00:00").expect("Test time invalid").to_utc();
+        let delta = TimeDelta::from_std(std::time::Duration::from_hours(24)).expect("Duration issues");
+        let decimal = |x:f64| Decimal::new((x*100.0).floor() as i64, 2);
+        let entries = vec![
+            models::quote::Model{
+                ts: start,
+                open: decimal(10.00),
+                high: decimal(11.0 ),
+                low: decimal(9.0),
+                close: decimal(10.5),
+                symbol: "chris".into(),
+                currency: "CHF".into(),
+                volume: 10,
+                adjusted_close: decimal(10.4),
+            },
+
+            models::quote::Model{
+                ts: start+delta,
+                open: decimal(10.00),
+                high: decimal(11.0 ),
+                low: decimal(9.0),
+                close: decimal(10.5),
+                symbol: "chris".into(),
+                currency: "CHF".into(),
+                volume: 10,
+                adjusted_close: decimal(10.4),
+            },
+
+        ];
+        client.upsert_quotes(&entries).await.expect("Issues upserting.") ;
+
     }
 }

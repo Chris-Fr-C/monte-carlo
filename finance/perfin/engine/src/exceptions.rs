@@ -1,6 +1,7 @@
 /// A bunch of errors to avoid having heterogeneous error types.
 use core::fmt;
 
+use polars::error::PolarsError;
 use sea_orm::DbErr;
 
 // Really not motivated to find a cool name.
@@ -30,6 +31,14 @@ impl std::error::Error for AppError {
 impl fmt::Display for AppError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "invalid first item to double")
+    }
+}
+
+impl From<PolarsError> for AppError {
+    fn from(value: PolarsError) -> Self {
+        AppError {
+            msg: value.to_string(),
+        }
     }
 }
 
