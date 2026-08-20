@@ -1,6 +1,6 @@
+/// A bunch of errors to avoid having heterogeneous error types.
 use core::fmt;
 
-use rustler::Atom;
 use sea_orm::DbErr;
 
 // Really not motivated to find a cool name.

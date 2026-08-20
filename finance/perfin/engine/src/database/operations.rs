@@ -6,12 +6,26 @@ pub struct Client {
     db: DbConn,
 }
 impl Client {
+
+    /// Creates the client with provided dsn.
+    /// Recommended to use sqlite.
+    ///
+    /// # Errors
+    /// If path or protocol is wrong.
+    ///
     pub async fn new(db_url: &String) -> Result<Client, DbErr> {
         Ok(Client {
             db: Database::connect(db_url).await?,
         })
     }
 
+
+    /// Insert quotes of a symbol into the database.
+    ///
+    /// # Errors
+    /// If any problem occurs on the database connection or if some data cannot be updated.
+    ///
+    /// This function will return an error if .
     pub async fn upsert_quotes(&self, entries: &Vec<models::quote::Model>) -> Result<(), DbErr> {
         if entries.is_empty() {
             return Ok(());
@@ -64,5 +78,15 @@ impl Client {
             .order_by_asc(models::quote::Column::Ts)
             .all(&self.db)
             .await?)
+    }
+}
+
+
+pub mod testing {
+    use sea_orm::{DatabaseConnectionType::MockDatabaseConnection};
+    pub fn mock_client() -> super::Client{
+        super::Client{
+            db: MockDatabaseConnection.into()
+        }
     }
 }

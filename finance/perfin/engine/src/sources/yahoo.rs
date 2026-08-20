@@ -1,13 +1,27 @@
+/// Module to fetch yahoo finance data.
 pub mod historical {
     use rust_decimal::prelude::ToPrimitive;
-use tracing::info;
+    use tracing::info;
     use yfinance_rs::{Interval, Range, Ticker, YfClient};
 
     use crate::database::{models, operations::Client};
 
+    /// Gets the data from yahoo finance and pushes it to the database
+    /// provided.
+    ///
+    /// # Panics
+    ///
+    /// No panic expected..
+    ///
+    /// # Errors
+    /// If an IO error occurs in db or in the web request.
+    ///
+    /// This function will return an error if .
+    pub async fn fetch_and_upsert(
+        db_client: Client,
+        symbol: String,
+    ) -> Result<(), Box<dyn std::error::Error>> {
 
-    pub async fn fetch_and_upsert(db_client: Client, symbol: String) -> Result<(), Box<dyn std::error::Error>>
-    {
         let client = YfClient::default();
 
         // Historical data
@@ -57,4 +71,6 @@ use tracing::info;
         db_client.upsert_quotes(&data).await?;
         Ok(())
     }
+
+    // Testing is too annoying here cause yt finance doenst use traits nor provide mocks.
 }

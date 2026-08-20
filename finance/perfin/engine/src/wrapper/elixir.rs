@@ -1,3 +1,5 @@
+/// This is just a module
+/// for elixir (beam vm) compatibility.
 use crate::{
     database::{self, operations::Client},
     exceptions::AppError,

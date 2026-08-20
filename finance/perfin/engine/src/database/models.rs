@@ -21,6 +21,8 @@ pub mod quote {
         pub low: Decimal,
         #[sea_orm()]
         pub close: Decimal,
+
+        // Sometimes present, the adjusted close considers dividends.
         #[sea_orm()]
         pub adjusted_close: Decimal,
         #[sea_orm()]
