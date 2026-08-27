@@ -1,0 +1,7 @@
+[project]
+name = "fintools"
+version = "0.1.0"
+description = "My cool financial tools."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
