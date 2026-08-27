@@ -78,6 +78,9 @@ This should then test a strategy (weighted combination of strategies) and output
 * `tests/` — Integration tests. Keep unit tests in the same file as the source code under `#[cfg(test)]`.
 
 
+Tests go within the same module than the thing it tests.
+For duck db database use the provided test package from duckdb.
+
 ---
 ## Tools
 This project will use Taskfile.yml to set up the different launchers.

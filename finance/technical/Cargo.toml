@@ -1,0 +1,10 @@
+[package]
+name = "technical"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.104"
+duckdb = "1.10505.0"
+polars = "0.55.2"
+thiserror = "2.0.20"
