@@ -76,6 +76,17 @@ This should then test a strategy (weighted combination of strategies) and output
 * `benches/` — Criterion or standard benchmark suites.
 * `tests/` — Integration tests. Keep unit tests in the same file as the source code under `#[cfg(test)]`.
 
+
+---
+## Tools
+This project will use Taskfile.yml to set up the different launchers.
+Usage:
+`task $command`
+
+It shall include a task to fetch historical data and put them into the database, a task to run backtests etc ...
+
+The schema is found in `https://taskfile.dev/schema.json`
+
 ---
 
 ## Command Workflows
