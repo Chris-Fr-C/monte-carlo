@@ -128,6 +128,5 @@ Use dependency injection when possible to mock external servives in the unit tes
 
 
 # Tracking
-Use the `kanban/` folder to understand the tasks to do. You can write under "Comment" section the notes that are important.
-When theWhen you work on a ticket, move it from kanban/backlog/  o kanban/progress/
-And when it's finished move it from kanban/progress to kanban/uat
+Use the `kanban.md` file to understand the tasks to do. You can add comments to the ticket as a new row such as `> comment: this is a comment` on the ticket block quote.
+When done, you can move it to the different sections (Backlog, Ongoing, UAT).
