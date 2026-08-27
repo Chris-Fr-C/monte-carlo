@@ -2,6 +2,7 @@
 
 ## Project Overview
 This repository is a **Rust** project. High performance, memory safety, and strict compile-time guarantees are top priorities.
+We only use the last versions of library, and of rust.
 
 This project is a trading system that has the following components:
 * `src/datamodel`: This module uses Duckdb and ORM to operate on a local database (file).
@@ -80,6 +81,8 @@ This should then test a strategy (weighted combination of strategies) and output
 ---
 ## Tools
 This project will use Taskfile.yml to set up the different launchers.
+The Taskfile.yml will be the one having the path to the duck db database file we want to use.
+
 Usage:
 `task $command`
 
@@ -121,3 +124,10 @@ Before presenting solutions or finalizing code, verify your work using these exa
 
 # Structure
 Use dependency injection when possible to mock external servives in the unit tests. Unit tests should not make any external calls.
+
+
+
+# Tracking
+Use the `kanban/` folder to understand the tasks to do. You can write under "Comment" section the notes that are important.
+When theWhen you work on a ticket, move it from kanban/backlog/  o kanban/progress/
+And when it's finished move it from kanban/progress to kanban/uat
