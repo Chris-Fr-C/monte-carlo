@@ -1,6 +1,13 @@
+"""Module for fetching stock quotes from Yahoo Finance.
+
+This module provides functionality to download historical price data for
+stock tickers using the Yahoo Finance API via the `yfinance` library.
+"""
+
 from dataclasses import dataclass, field
 from typing import NamedTuple
 import pendulum
+
 
 import fintools.interface as c
 import polars as pl
@@ -10,12 +17,38 @@ import requests
 
 
 class Stock(NamedTuple):
+    """Stock identifier combining a ticker symbol and its currency.
+
+    Args:
+        symbol: The stock ticker symbol (e.g., "NESN.SW").
+        currency: The currency code for the stock's price quotes.
+
+    Example:
+        >>> Stock("NESN.SW", c.Currency.CHF)
+        Stock(symbol='NESN.SW', currency=Currency.CHF)
+    """
+
     symbol: c.Symbol
     currency: c.Currency
 
 
+
 @dataclass
 class Config:
+    """Configuration for stock data fetching.
+
+    Args:
+        tickers: List of stocks to fetch price data for.
+        session: HTTP session used for making requests to Yahoo Finance.
+        start: The start date for the historical data range (inclusive).
+            Defaults to 12 months ago from the current time in Zurich timezone.
+        end: The end date for the historical data range (inclusive).
+            Defaults to today's date in Zurich timezone.
+
+    Example:
+        >>> cfg = Config(tickers=[Stock("NESN.SW", c.Currency.CHF)])
+    """
+
     tickers: list[Stock]
     session: requests.Session = field(default_factory=requests.Session)
     start: pendulum.DateTime = field(
@@ -27,16 +60,17 @@ class Config:
         default_factory=lambda: pendulum.now("Europe/Zurich")
     )
 
-
 @dataclass
 class YahooDownloader:
+    """Downloads stock quotes from Yahoo Finance.
+
+    Args:
+        cfg: Configuration object specifying tickers and other fetch settings.
+    """
+
     cfg: Config
 
-    def _tickers(self) -> yfinance.Tickers:
-        return yfinance.Tickers(
-            [x.symbol for x in self.cfg.tickers],
-            session=self.cfg.session,
-        )
+
 
     def fetch(self) -> pl.DataFrame:
         data: pd.DataFrame | None = self._tickers().download(
