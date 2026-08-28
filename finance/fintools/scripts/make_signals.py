@@ -4,7 +4,7 @@ import click
 import yaml
 import pendulum
 import pathlib
-from typing import cast
+from typing import Counter, cast
 
 import fintools.database as database
 import fintools.interface as i
@@ -19,8 +19,11 @@ def main():
     start = pendulum.DateTime.fromisoformat(reference["start_date"]).in_timezone("Europe/Zurich")
 
 
+    logger = deps.Container.logger()
     strategies: list[si.SignalInterface] = [
-        si.ema_crossing.EMACrossing(slow_period_days=14,fast_period_days=7)
+        si.ema_crossing.EMACrossing(slow_period_days=14,fast_period_days=7),
+        si.momentum.KAMACrossing(),
+        si.momentum.AwesomeOscillatorCrossing(),
     ]
     with con:
         crud = database.Operator(
@@ -29,6 +32,7 @@ def main():
             )
         )
         signals_to_upsert: si.SignalDf.DataFrame = pl.DataFrame()
+        counter: Counter[str]= Counter()
         for entry in reference["stocks"]:
             symbol = entry["symbol"]
             full_data = crud.get(symbol=symbol, start=start, end=pendulum.now())
@@ -37,6 +41,8 @@ def main():
                 out= strat(full_data, symbol)
                 out = out.filter(pl.col(si.SignalDf.Columns.CATEGORY).ne(si.SignalDirection.UNSPECIFIED))
                 signals_to_upsert = pl.concat((signals_to_upsert, out), how="vertical" )
+                counter[strat.name()]+=len(out)
+        logger.info("{} signals generated.", counter)
 
         _=crud.upsert_signals(signals_to_upsert)
 

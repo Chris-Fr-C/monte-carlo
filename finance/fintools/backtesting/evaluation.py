@@ -1,14 +1,16 @@
-import pendulum
+from typing import ClassVar, override
 
+import pandas as pd
+import pendulum
+import polars as pl
 from backtesting import Backtest, Strategy
 from backtesting.lib import crossover
-import polars as pl
-from backtesting.test import SMA, GOOG
-import pandas as pd
-from fintools.database import Operator, Config
-import fintools.interface as i
+from backtesting.test import SMA
+
 import fintools.deps as deps
+import fintools.interface as i
 import fintools.signals.interface as si
+from fintools.database import Config, Operator
 
 logger = deps.Container.logger()
 
@@ -17,9 +19,10 @@ class CustomStrategy(Strategy):
     all_sigs: si.SignalDf.DataFrame
     symbol: str = ""
     signal_validity: pendulum.Duration = pendulum.Duration(days=1)
-    TP=0.02
-    SL=0.04
+    TP:ClassVar[float]=0.02
+    SL:ClassVar[float]=0.04
 
+    @override
     def init(self):
         # for perf we fetch once then we filter
         con = deps.Container.connection()
@@ -28,6 +31,30 @@ class CustomStrategy(Strategy):
             self.all_sigs = Operator(cfg).get_all_signals()
         super().init()
 
+
+    def weight_decision(self, df: si.SignalDf.DataFrame)->si.SignalDirection:
+        c = si.SignalDf.Columns
+        df = df.with_columns(
+            pl.when(
+                pl.col(c.CATEGORY).eq("up")
+            ).then(
+                pl.lit(1.0)
+            ).when(
+                pl.col(c.CATEGORY).eq("down")
+            ).then(pl.lit(-1.0))
+            .otherwise(pl.lit(0)).alias("summable")
+        )
+        avg = df.group_by(pl.col("summable")).mean()
+        x= float(avg.head(n=1)["summable"][0])
+        epsilon = 0.4
+        if x>epsilon:
+            return si.SignalDirection.UP
+        elif x<-1*epsilon:
+            return si.SignalDirection.DOWN
+        else:
+            return si.SignalDirection.UNSPECIFIED
+
+    @override
     def next(self):
         assert self.symbol
         ts = self.data.index[-1]
@@ -39,9 +66,11 @@ class CustomStrategy(Strategy):
         cl = self.data.Close[-1]
         tp = cl*(1+self.TP)
         sl = cl*(1-self.SL)
-        if sigs["category"][0]=="up":
-            self.buy(
-                size=1,
+
+        dec = self.weight_decision(sigs)
+        # if sigs["category"][0]=="up":
+        if dec == si.SignalDirection.UP:
+            _ = self.buy(
                 sl = sl, tp=tp)
             logger.info("order placed at {} for {}", ts, cl)
 
@@ -99,13 +128,34 @@ if __name__ == "__main__":
         data = Operator(cfg).get(symbol, start=start, end=end)
         data = data.drop_nulls()
         backtest_data = _rename_for_backtest(data)
-    bt = Backtest(
-        backtest_data,
-        CustomStrategy,
-        cash=1000,
-        commission=(7, 0.002), # swiss quotes seem to have flat commission: https://www.swissquote.com/en-ch/private/trade/pricing/securities/stocks
-        exclusive_orders=True,
-    )
+    def fees(order_size: int, price: float) -> float:
+        """https://www.swissquote.com/en-ch/private/trade/pricing/securities/stocks"""
+        if order_size<=500:
+            return 3
+        elif order_size<=1000:
+            return 5
+        elif order_size<=2000:
+            return 10
+        elif order_size<=10000:
+            return 29
+        elif order_size<=15000:
+            return 40
+        elif order_size<=25_000:
+            return 79
+        else:
+            raise Exception("Didnt code that cause i dont have thaaat amount of money")
 
-    output = bt.run(symbol=symbol)
-    bt.plot()
+    symbs = [x["symbol"] for x in deps.Container.reference()["stocks"] if x["currency"]=="CHF"]
+    # Availability
+    for symbol in symbs:
+        bt = Backtest(
+            backtest_data,
+            CustomStrategy,
+            cash=10000,
+            commission=fees, # 0.002), # swiss quotes seem to have flat commission: https://www.swissquote.com/en-ch/private/trade/pricing/securities/stocks
+            exclusive_orders=True,
+        )
+        logger.info("Treating {}", symbol)
+        output = bt.run(symbol=symbol)
+
+        bt.plot()
