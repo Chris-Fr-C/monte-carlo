@@ -3,7 +3,11 @@ title: StockPortfolio
 type: object
 required:
   - stocks
+  - start_date
 properties:
+  start_date:
+    type: string
+    description: Starting date, isoformat, Europe/Zurich timezone.
   stocks:
     type: array
     description: A list of stock entries in the portfolio

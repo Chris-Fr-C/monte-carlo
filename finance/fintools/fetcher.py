@@ -71,10 +71,12 @@ class YahooDownloader:
     cfg: Config
 
     def _tickers(self) -> yfinance.Tickers:
-        return yfinance.Tickers(                                                                               │
-            [x.symbol for x in self.cfg.tickers],                                                              │
-            session=self.cfg.session,                                                                          ▐
-        )                                                                                                      ▐
+        return yfinance.Tickers(
+            tickers=[x.symbol for x in self.cfg.tickers],
+            session=self.cfg.session,
+        )
+
+
 
     def fetch(self) -> pl.DataFrame:
         data: pd.DataFrame | None = self._tickers().download(

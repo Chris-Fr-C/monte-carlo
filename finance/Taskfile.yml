@@ -11,7 +11,7 @@ tasks:
     desc: "Get historical data"
     cmds:
       - |
-        uv run fintools/scripts/fetch --reference "{{.REF_FILE}}" --db "{{.DB_FILE}}"
+        uv run fintools/scripts/fetch.py --reference "{{.REF_FILE}}" --db "{{.DB_FILE}}"
     silent: false
 
 

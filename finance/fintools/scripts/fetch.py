@@ -26,13 +26,11 @@ class YamlConfig(TypedDict):
 def main(reference:pathlib.Path, db: pathlib.Path):
     with open(reference, 'r') as fi:
         cfg: YamlConfig= cast(YamlConfig, yaml.safe_load(fi))
+    def sanitize(x: str)->str:
+        return x.strip().replace(r"\n",x)
 
     config = fetcher.Config(
-        [
-            fetcher.Stock(
-                symbol=x["symbol"], currency=i.Currency[x["currency"]]
-            ) for x in cfg["stocks"]
-        ],
+        tickers = [fetcher.Stock(symbol=sanitize(x["symbol"]), currency=i.Currency[x["currency"]]) for x in cfg["stocks"]],
         start = pendulum.DateTime.fromisoformat(cfg["start_date"]).in_timezone("Europe/Zurich")
     )
     df = fetcher.YahooDownloader(config).fetch()

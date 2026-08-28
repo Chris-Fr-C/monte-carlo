@@ -1,4 +1,200 @@
 $schema: "./reference-schema.yaml"
+start_date: "2026-01-01T00:00:00Z"
 stocks:
+  # ==========================================
+  # SWISS FRANCS (CHF) - Swiss Market Index (SMI)
+  # ==========================================
   - symbol: NESN.SW
-    currency: CHF
+    currency: CHF # Nestlé S.A.
+  - symbol: ROG.SW
+    currency: CHF # Roche Holding AG
+  - symbol: NOVN.SW
+    currency: CHF # Novartis AG
+  - symbol: UBSG.SW
+    currency: CHF # UBS Group AG
+  - symbol: ABBN.SW
+    currency: CHF # ABB Ltd.
+  - symbol: CFR.SW
+    currency: CHF # Compagnie Financière Richemont SA
+  - symbol: ZURN.SW
+    currency: CHF # Zurich Insurance Group AG
+  - symbol: LONN.SW
+    currency: CHF # Lonza Group AG
+  - symbol: SREN.SW
+    currency: CHF # Swiss Re AG
+  - symbol: GIVN.SW
+    currency: CHF # Givaudan SA
+  - symbol: HOLN.SW
+    currency: CHF # Holcim Ltd
+  - symbol: SCMN.SW
+    currency: CHF # Swisscom AG
+  - symbol: ALC.SW
+    currency: CHF # Alcon Inc.
+  - symbol: LOGN.SW
+    currency: CHF # Logitech International S.A.
+  - symbol: SCHN.SW
+    currency: CHF # Schindler Holding AG
+
+  # ==========================================
+  # EURO (EUR) - Major European Leaders
+  # ==========================================
+  # Semiconductors & Tech
+  - symbol: ASML.AS
+    currency: EUR # ASML Holding N.V. (Netherlands)
+  - symbol: SAP.DE
+    currency: EUR # SAP SE (Germany)
+  - symbol: IFX.DE
+    currency: EUR # Infineon Technologies AG (Germany)
+  - symbol: BESI.AS
+    currency: EUR # BE Semiconductor Industries N.V. (Netherlands)
+
+  # Luxury & Consumer Goods
+  - symbol: MC.PA
+    currency: EUR # LVMH Moët Hennessy Louis Vuitton (France)
+  - symbol: OR.PA
+    currency: EUR # L'Oréal S.A. (France)
+  - symbol: RMS.PA
+    currency: EUR # Hermès International (France)
+  - symbol: KER.PA
+    currency: EUR # Kering SA (France)
+  - symbol: ITX.MC
+    currency: EUR # Industria de Diseño Textil / Inditex (Spain)
+  - symbol: ADS.DE
+    currency: EUR # Adidas AG (Germany)
+
+  # Healthcare & Pharmaceuticals
+  - symbol: SAN.PA
+    currency: EUR # Sanofi S.A. (France)
+  - symbol: BAYN.DE
+    currency: EUR # Bayer AG (Germany)
+  - symbol: FRE.DE
+    currency: EUR # Fresenius SE & Co. KGaA (Germany)
+
+  # Industrial, Aerospace & Automotive
+  - symbol: SIE.DE
+    currency: EUR # Siemens AG (Germany)
+  - symbol: AIR.PA
+    currency: EUR # Airbus SE (France)
+  - symbol: SU.PA
+    currency: EUR # Schneider Electric SE (France)
+  - symbol: MBG.DE
+    currency: EUR # Mercedes-Benz Group AG (Germany)
+  - symbol: BMW.DE
+    currency: EUR # Bayerische Motoren Werke AG (Germany)
+  - symbol: VOW3.DE
+    currency: EUR # Volkswagen AG (Germany)
+  - symbol: SAF.PA
+    currency: EUR # Safran S.A. (France)
+  - symbol: DG.PA
+    currency: EUR # Vinci SA (France)
+
+  # Financials & Insurance
+  - symbol: ALV.DE
+    currency: EUR # Allianz SE (Germany)
+  - symbol: SAN.MC
+    currency: EUR # Banco Santander, S.A. (Spain)
+  - symbol: BNP.PA
+    currency: EUR # BNP Paribas S.A. (France)
+  - symbol: BBVA.MC
+    currency: EUR # Banco Bilbao Vizcaya Argentaria (Spain)
+  - symbol: DBK.DE
+    currency: EUR # Deutsche Bank AG (Germany)
+  - symbol: ISP.MI
+    currency: EUR # Intesa Sanpaolo S.p.A. (Italy)
+  - symbol: UCG.MI
+    currency: EUR # UniCredit S.p.A. (Italy)
+  - symbol: MUV2.DE
+    currency: EUR # Munich Re / Münchener Rück (Germany)
+  - symbol: ING.AS
+    currency: EUR # ING Groep N.V. (Netherlands)
+
+  # Energy & Utilities
+  - symbol: TTE.PA
+    currency: EUR # TotalEnergies SE (France)
+  - symbol: IBE.MC
+    currency: EUR # Iberdrola, S.A. (Spain)
+  - symbol: ENEL.MI
+    currency: EUR # Enel S.p.A. (Italy)
+  - symbol: ENI.MI
+    currency: EUR # Eni S.p.A. (Italy)
+  - symbol: RWE.DE
+    currency: EUR # RWE AG (Germany)
+
+  # ==========================================
+  # US DOLLARS (USD) - Tech Mega-Caps & Leaders
+  # ==========================================
+  # Tech "Magnificent Seven" & Semiconductors
+  - symbol: AAPL
+    currency: USD # Apple Inc.
+  - symbol: MSFT
+    currency: USD # Microsoft Corporation
+  - symbol: NVDA
+    currency: USD # NVIDIA Corporation
+  - symbol: GOOGL
+    currency: USD # Alphabet Inc. (Class A)
+  - symbol: AMZN
+    currency: USD # Amazon.com, Inc.
+  - symbol: META
+    currency: USD # Meta Platforms, Inc.
+  - symbol: TSLA
+    currency: USD # Tesla, Inc.
+  - symbol: AVGO
+    currency: USD # Broadcom Inc.
+  - symbol: AMD
+    currency: USD # Advanced Micro Devices, Inc.
+  - symbol: INTC
+    currency: USD # Intel Corporation
+  - symbol: QCOM
+    currency: USD # QUALCOMM Incorporated
+
+  # Finance & Conglomerates
+  - symbol: BRK-B
+    currency: USD # Berkshire Hathaway Inc. (Class B)
+  - symbol: JPM
+    currency: USD # JPMorgan Chase & Co.
+  - symbol: V
+    currency: USD # Visa Inc.
+  - symbol: MA
+    currency: USD # Mastercard Incorporated
+  - symbol: BAC
+    currency: USD # Bank of America Corporation
+  - symbol: GS
+    currency: USD # The Goldman Sachs Group, Inc.
+  - symbol: MS
+    currency: USD # Morgan Stanley
+
+  # Healthcare & BioTech
+  - symbol: LLY
+    currency: USD # Eli Lilly and Company
+  - symbol: UNH
+    currency: USD # UnitedHealth Group Incorporated
+  - symbol: JNJ
+    currency: USD # Johnson & Johnson
+  - symbol: PFE
+    currency: USD # Pfizer Inc.
+  - symbol: ABBV
+    currency: USD # AbbVie Inc.
+  - symbol: MRK
+    currency: USD # Merck & Co., Inc.
+
+  # Consumer, Retail & Industrial
+  - symbol: WMT
+    currency: USD # Walmart Inc.
+  - symbol: PG
+    currency: USD # The Procter & Gamble Company
+  - symbol: KO
+    currency: USD # The Coca-Cola Company
+  - symbol: PEP
+    currency: USD # PepsiCo, Inc.
+  - symbol: COST
+    currency: USD # Costco Wholesale Corporation
+  - symbol: HD
+    currency: USD # The Home Depot, Inc.
+  - symbol: MCD
+    currency: USD # McDonald's Corporation
+  - symbol: CAT
+    currency: USD # Caterpillar Inc.
+  - symbol: GE
+    currency: USD # General Electric Company
+  - symbol: XOM
+    currency: USD # Exxon Mobil Corporation
