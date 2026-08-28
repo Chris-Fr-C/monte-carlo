@@ -21,10 +21,45 @@ def main():
 
     logger = deps.Container.logger()
     strategies: list[si.SignalInterface] = [
-        si.ema_crossing.EMACrossing(slow_period_days=14,fast_period_days=7),
-        si.momentum.KAMACrossing(),
-        si.momentum.AwesomeOscillatorCrossing(),
-    ]
+        # trends
+        si.trend.ADXSignal(),
+        si.trend.AroonSignal(),
+        si.trend.CCISignal(),
+        si.trend.DPOSignal(),
+        si.trend.EMASignal(),
+        si.trend.IchimokuSignal(),
+        si.trend.KSTSignal(),
+        si.trend.MACDSignal(),
+        si.trend.MassIndexSignal(),
+        si.trend.PSARSignal(),
+        si.trend.STCSignal(),
+        si.trend.TRIXSignal(),
+        si.trend.VortexSignal(),
+        si.trend.WMASignal(),
+
+        # momentum
+        si.momentum.AwesomeOscillatorSignal(),
+        si.momentum.KAMASignal(),
+        si.momentum.PPOSignal(),
+        si.momentum.PVOSignal(),
+        si.momentum.ROCSignal(),
+        si.momentum.StochRSISignal(),
+        si.momentum.StochasticOscillatorSignal(),
+        si.momentum.TSISignal(),
+        si.momentum.UltimateOscillatorSignal(),
+        si.momentum.WilliamsRSignal(),
+
+
+        # volatility
+        si.volatility.AverageTrueRange(),
+        si.volatility.BollingerBandsCrossing(),
+        si.volatility.DonchianChannelCrossing(),
+        si.volatility.KeltnerChannelCrossing(),
+        si.volatility.UlcerIndexCrossing(),
+     ]
+    # first we just take the default for everything we have
+
+
     with con:
         crud = database.Operator(
             database.Config(

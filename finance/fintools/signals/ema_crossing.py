@@ -16,6 +16,9 @@ class EMACrossing(si.SignalInterface):
     fast_period_days: int = field(default=7)
 
     @override
+    def topology(self) -> str:
+        return f"trend"
+    @override
     def name(self) -> str:
         return f"ema-crossing-{self.fast_period_days}d-{self.slow_period_days}d"
 
