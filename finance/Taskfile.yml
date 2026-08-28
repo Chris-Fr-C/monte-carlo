@@ -5,20 +5,23 @@ vars:
   DB_FILE: "{{.TASKFILE_DIR}}/data/fintools.duckdb"
   REF_FILE: "{{.TASKFILE_DIR}}/data/reference.yaml"
   LOG_LEVEL: "INFO"
-
+env:
+  FINTOOLS_DB_FILE: "{{.DB_FILE}}"
+  FINTOOLS_REF_FILE: "{{.REF_FILE}}"
+  LOGURU_LEVEL: "{{.LOG_LEVEL}}"
 tasks:
   data:fetch:
     desc: "Get historical data"
     cmds:
       - |
-        uv run fintools/scripts/fetch.py --reference "{{.REF_FILE}}" --db "{{.DB_FILE}}"
+        uv run fintools/scripts/fetch.py
     silent: false
 
   data:make-signals:
     desc: "Build historical signals (slow)"
     cmds:
       - |
-        LOGURU_LEVEL="{{.LOG_LEVEL}}" uv run fintools/scripts/make_signals.py --reference "{{.REF_FILE}}" --db "{{.DB_FILE}}"
+         uv run fintools/scripts/make_signals.py
     silent: false
 
 

@@ -5,8 +5,10 @@ description = "My finance tool poc"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "backtesting>=0.6.6",
     "ckdl>=1.0",
     "click>=8.5.0",
+    "dependency-injector>=4.49.1",
     "duckdb>=1.5.5",
     "isodate>=0.7.2",
     "loguru>=0.7.3",
