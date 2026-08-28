@@ -4,7 +4,7 @@ version: '3'
 vars:
   DB_FILE: "{{.TASKFILE_DIR}}/data/fintools.duckdb"
   REF_FILE: "{{.TASKFILE_DIR}}/data/reference.yaml"
-
+  LOG_LEVEL: "INFO"
 
 tasks:
   data:fetch:
@@ -12,6 +12,13 @@ tasks:
     cmds:
       - |
         uv run fintools/scripts/fetch.py --reference "{{.REF_FILE}}" --db "{{.DB_FILE}}"
+    silent: false
+
+  data:make-signals:
+    desc: "Build historical signals (slow)"
+    cmds:
+      - |
+        LOGURU_LEVEL="{{.LOG_LEVEL}}" uv run fintools/scripts/make_signals.py --reference "{{.REF_FILE}}" --db "{{.DB_FILE}}"
     silent: false
 
 

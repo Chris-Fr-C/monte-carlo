@@ -8,6 +8,7 @@ import pendulum
 from loguru import logger
 from polars import DataFrame
 
+from fintools import signals
 import fintools.interface as i
 
 
@@ -23,6 +24,12 @@ class Config:
         default_factory=lambda: duckdb.connect("fintools.duckdb")
     )
 
+
+@functools.lru_cache()
+def _signals_ddl() -> str:
+    script = pathlib.Path(__file__).parent / "schemas" / "setup-signals.sql"
+    with open(script, "r") as fi:
+        return fi.read()
 
 @functools.lru_cache()
 def _ddl() -> str:
@@ -46,6 +53,11 @@ def _quotes_upsert() -> str:
     with open(script, "r") as fi:
         return fi.read()
 
+def _signals_upsert() -> str:
+    script = pathlib.Path(__file__).parent / "schemas" / "signals-upsert.sql"
+    with open(script, "r") as fi:
+        return fi.read()
+
 
 @dataclasses.dataclass
 class Operator:
@@ -56,6 +68,8 @@ class Operator:
     """
 
     cfg: Config
+    def __post_init__(self):
+        self.init()
 
     def init(self) -> Self:
         """Initialize the database by executing schema definition language.
@@ -66,7 +80,19 @@ class Operator:
             Self for method chaining.
         """
         res = self.cfg.connection.sql(query=_ddl())
-        logger.info("DDL operated. Resulting in {res}", res=res)
+        logger.info("Quotes DDL operated. Resulting in {res}", res=res)
+
+        res = self.cfg.connection.sql(query=_signals_ddl())
+        logger.info("Signals DDL operated. Resulting in {res}", res=res)
+        return self
+
+    def upsert_signals(self, df: signals.SignalDf.DataFrame)->Self:
+        query = _signals_upsert()
+        _=self.cfg.connection.register("signals_temp_df", df)
+        _=self.cfg.connection.execute(query)
+        logger.info("Written {n} signals.", n=len(df))
+        _=self.cfg.connection.unregister("signals_temp_df")
+
         return self
 
     def upsert(self, df: i.QuotesDf.DataFrame) -> Self:
@@ -95,7 +121,7 @@ class Operator:
 
     def get(
         self, symbol: i.Symbol, start: pendulum.DateTime, end: pendulum.DateTime
-    ) -> DataFrame:
+    ) -> i.QuotesDf.DataFrame:
         assert start.timezone is not None, "Dates must be timezone aware."
         assert end.timezone is not None, "Dates must be timezone aware."
         return self.cfg.connection.sql(
@@ -105,6 +131,7 @@ class Operator:
                 symbol=$1
                 AND ts>=$2
                 AND ts<=$3
+            ORDER BY ts ASC
             """,
             params=(symbol, start, end)
         ).pl(lazy=False) # Not lazy to avoid handling here the connection state.

@@ -10,15 +10,8 @@ import yaml
 import fintools.database as database
 import fintools.fetcher as fetcher
 import fintools.interface as i
+from fintools.scripts.config import YamlConfig
 
-
-class _YamlSymbolConfig(TypedDict):
-    symbol: str
-    currency: Literal["CHF", "USD", "EUR"]
-
-class YamlConfig(TypedDict):
-    stocks: list[_YamlSymbolConfig]
-    start_date: str
 
 @click.command()
 @click.option('--reference', default="./reference.yaml", help='Reference file with the stock symbols and currencies to fetch.')
