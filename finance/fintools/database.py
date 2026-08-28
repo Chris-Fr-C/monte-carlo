@@ -1,10 +1,14 @@
 import dataclasses
-import duckdb
 import functools
 import pathlib
 from typing import Self
-import fintools.interface as i
+
+import duckdb
+import pendulum
 from loguru import logger
+from polars import DataFrame
+
+import fintools.interface as i
 
 
 @dataclasses.dataclass
@@ -14,6 +18,7 @@ class Config:
     Attributes:
         connection: DuckDB connection instance used for executing SQL queries.
     """
+
     connection: duckdb.DuckDBPyConnection = dataclasses.field(
         default_factory=lambda: duckdb.connect("fintools.duckdb")
     )
@@ -49,6 +54,7 @@ class Operator:
     Attributes:
         cfg: Configuration instance containing the database connection.
     """
+
     cfg: Config
 
     def init(self) -> Self:
@@ -86,6 +92,22 @@ class Operator:
         _ = self.cfg.connection.unregister("temp_df")
 
         return self
+
+    def get(
+        self, symbol: i.Symbol, start: pendulum.DateTime, end: pendulum.DateTime
+    ) -> DataFrame:
+        assert start.timezone is not None, "Dates must be timezone aware."
+        assert end.timezone is not None, "Dates must be timezone aware."
+        return self.cfg.connection.sql(
+            """
+            SELECT * FROM quotes
+            WHERE
+                symbol=$1
+                AND ts>=$2
+                AND ts<=$3
+            """,
+            params=(symbol, start, end)
+        ).pl(lazy=False) # Not lazy to avoid handling here the connection state.
 
 
 if __name__ == "__main__":
