@@ -16,167 +16,240 @@ from fintools.database import Config, Operator
 logger = deps.Container.logger()
 
 
+"""
+Take profit stop loss computation:
+
+To break even with a win rate of TP/SL win/risk ratio
+we need to win:
+SL/(TP+SL)
+if TP/SL = 1/2 then we need to win 66% of time.
+
+>>>def f(tp,sl):
+...   return sl/(tp+sl)
+>>> f(0.04,0.04)
+0.5
+>>> f(0.04,0.03)
+0.4285714285714285
+>>> f(0.04,0.06)
+0.6
+>>>
+
+"""
+
 class CustomStrategy(Strategy):
     all_sigs: si.SignalDf.DataFrame
     symbol: str = ""
     signal_validity: pendulum.Duration = pendulum.Duration(days=1)
-    TP: ClassVar[float] = 0.02
-    SL: ClassVar[float] = 0.04
+
+    # Risk Management Parameters
+    TP: ClassVar[float] = 0.06 # 0.06 but flat fees cause issues with that
+    SL: ClassVar[float] = 0.03 # 0.03
+
+    # region lowrisk
+    # Strategy Thresholds (CONSERVATIVE SETUP)
+    MIN_SCORE_THRESHOLD: ClassVar[float] = 1.80  # Requires multiple confirming signals
+    CONSENSUS_RATIO: ClassVar[float] = 0.80      # Requires 80% directional consensus (filters mixed signals)
+    SHORT_ALLOWED: ClassVar[bool] = False         # Long-only (avoids fighting long-term equity market drift)
+
+    # Topology Weights (Prioritize structural trends over short-term noise)
+    TOPOLOGY_WEIGHTS: ClassVar[dict[str, float]] = {
+        "trend": 1.5,        # Primary structural filter
+        "momentum": 0.6,     # Secondary momentum confirmation
+        "volatility": 0.2,   # Low weight (prevents entry on isolated volatility spikes)
+    }
+    # endregion lowrisk
+
+    # region normal
+    # # Strategy Thresholds
+    # MIN_SCORE_THRESHOLD: ClassVar[float] = 0.5  # Adjusted threshold for practical signal matching
+    # CONSENSUS_RATIO: ClassVar[float] = 0.60       # Require 60% agreement between bull/bear forces
+    # SHORT_ALLOWED: ClassVar[bool] = False
+    #
+    # # Weight assigned to each topology component
+    # TOPOLOGY_WEIGHTS: ClassVar[dict[str, float]] = {
+    #     "trend": 1.0,
+    #     "momentum": 0.8,
+    #     "volatility": 0.5,
+    # }
+    # endregion normal
 
     @override
     def init(self):
-        # for perf we fetch once then we filter
         con = deps.Container.connection()
         cfg = Config(con)
         with con:
             self.all_sigs = Operator(cfg).get_all_signals()
 
-
-
-        self._precompute_signals_for_ui()
+        self._precompute_signals_and_indicators()
         super().init()
 
-    def _precompute_signals_for_ui(self):
-        # this function is shit, gotta rewrite it
-        def signal_points(
-            counts_series: np.ndarray, price_series: np.ndarray
-        ) -> np.ndarray:
-            """Returns price points where signal counts > 0, and NaN elsewhere."""
+    def _precompute_signals_and_indicators(self):
+        """Precomputes weighted score series and chart visual markers via Polars."""
+        c = si.SignalDf.Columns
+
+        # 1. Filter signals to current symbol and format timestamps
+        sym_sigs = self.all_sigs.filter(pl.col(c.SYMBOL).eq(self.symbol))
+        if sym_sigs.is_empty():
+            n = len(self.data.index)
+            self.bull_scores = np.zeros(n)
+            self.bear_scores = np.zeros(n)
+            self.buy_counts = np.zeros(n)
+            self.sell_counts = np.zeros(n)
+            self._setup_ui_indicators()
+            return
+
+        # Ensure sym_sigs timestamps are cast cleanly to Datetime
+        if sym_sigs[c.TS].dtype == pl.Object:
+            sym_sigs = sym_sigs.with_columns(pl.col(c.TS).cast(pl.String).str.to_datetime().alias("sig_ts"))
+        elif sym_sigs[c.TS].dtype == pl.String:
+            sym_sigs = sym_sigs.with_columns(pl.col(c.TS).str.to_datetime().alias("sig_ts"))
+        else:
+            sym_sigs = sym_sigs.with_columns(pl.col(c.TS).cast(pl.Datetime).alias("sig_ts"))
+
+        # 2. Extract price dates into a Polars DataFrame with distinct alias
+        dates_series = pl.from_pandas(self.data.index.to_series()).cast(pl.Datetime).rename("bar_ts")
+        dates_df = pl.DataFrame([dates_series])
+
+        # 3. Join historical signals within the validity window: (bar_ts - validity, bar_ts]
+        validity_seconds = self.signal_validity.in_seconds()
+
+        dates_lazy = dates_df.lazy().with_columns(
+            (pl.col("bar_ts") - pl.duration(seconds=validity_seconds)).alias("ts_start")
+        )
+
+        joined = (
+            dates_lazy
+            .join_where(
+                sym_sigs.lazy(),
+                pl.col("sig_ts") >= pl.col("ts_start"),
+                pl.col("sig_ts") < pl.col("bar_ts"),
+            )
+            .collect()
+        )
+
+        # 4. Map signals to weighted scores
+        if not joined.is_empty():
+            directional_scores = joined.with_columns(
+                pl.when(pl.col(c.CATEGORY).is_in([
+                    si.SignalDirection.UP,
+                    si.SignalDirection.MOMENTUM_ACCELERATION,
+                    si.SignalDirection.OVERSOLD,
+                    si.SignalDirection.BULLISH_DIVERGENCE,
+                ]))
+                .then(1.0)
+                .when(pl.col(c.CATEGORY).is_in([
+                    si.SignalDirection.DOWN,
+                    si.SignalDirection.MOMENTUM_DECELERATION,
+                    si.SignalDirection.OVERBOUGHT,
+                    si.SignalDirection.BEARISH_DIVERGENCE,
+                ]))
+                .then(-1.0)
+                .otherwise(0.0)
+                .alias("raw_direction"),
+
+                pl.col(c.TOPOLOGY).replace(self.TOPOLOGY_WEIGHTS, default=0.5).alias("topo_weight")
+            ).with_columns(
+                (pl.col("raw_direction") * pl.col(c.CONFIDENCE) * pl.col("topo_weight")).alias("weighted_score")
+            )
+
+            # Aggregate scores per bar_ts
+            agg_scores = (
+                directional_scores.group_by("bar_ts")
+                .agg(
+                    pl.col("weighted_score").filter(pl.col("weighted_score") > 0).sum().fill_null(0.0).alias("bull_score"),
+                    pl.col("weighted_score").filter(pl.col("weighted_score") < 0).abs().sum().fill_null(0.0).alias("bear_score"),
+                    (pl.col(c.CATEGORY).is_in([si.SignalDirection.UP, si.SignalDirection.BULLISH_DIVERGENCE])).sum().alias("buy_count"),
+                    (pl.col(c.CATEGORY).is_in([si.SignalDirection.DOWN, si.SignalDirection.BEARISH_DIVERGENCE])).sum().alias("sell_count"),
+                )
+            )
+
+            final_df = dates_df.join(agg_scores, on="bar_ts", how="left").fill_null(0.0)
+
+            self.bull_scores = final_df["bull_score"].to_numpy()
+            self.bear_scores = final_df["bear_score"].to_numpy()
+            self.buy_counts = final_df["buy_count"].to_numpy()
+            self.sell_counts = final_df["sell_count"].to_numpy()
+        else:
+            n = len(self.data.index)
+            self.bull_scores = np.zeros(n)
+            self.bear_scores = np.zeros(n)
+            self.buy_counts = np.zeros(n)
+            self.sell_counts = np.zeros(n)
+
+        self._setup_ui_indicators()
+
+    def _setup_ui_indicators(self):
+        """Helper to register indicators for visual overlay in backtesting UI."""
+        def scatter_points(counts_series: np.ndarray, price_series: np.ndarray) -> np.ndarray:
             return np.where(counts_series > 0, price_series, np.nan)
 
-        c = si.SignalDf.Columns
-        timestamps = self.data.index
+        self.I(lambda: self.bull_scores, name="Bull Intensity Score", color="green")
+        self.I(lambda: self.bear_scores, name="Bear Intensity Score", color="red")
 
-        buy_counts = []
-        sell_counts = []
-
-        for ts in timestamps:
-            sigs = self._find_signal(ts)
-            if sigs.is_empty():
-                buy_counts.append(0)
-                sell_counts.append(0)
-            else:
-                counts = dict(sigs["category"].value_counts().iter_rows())
-                buy_counts.append(counts.get("up", 0))
-                sell_counts.append(counts.get("down", 0))
-
-        # Store counts arrays for decision logic in next()
-        self.buy_counts = np.array(buy_counts)
-        self.sell_counts = np.array(sell_counts)
-
-        # 3. Declare indicators using self.I for plotting
-        # Panel 1: Number of signal events in a separate subplot panel below price
-        self.I(lambda: self.buy_counts, name="Buy Signal Count", color="green")
-        self.I(lambda: self.sell_counts, name="Sell Signal Count", color="red")
-
-        # Panel 2: Visual scatter markers overlaid on the Price chart
         self.I(
-            signal_points,
+            scatter_points,
             self.buy_counts,
-            self.data.Low * 0.99,  # Placed slightly below low price
-            name="Buy Signal Marker",
+            self.data.Low * 0.99,
+            name="Buy Marker",
             overlay=True,
             scatter=True,
             color="green",
         )
         self.I(
-            signal_points,
+            scatter_points,
             self.sell_counts,
-            self.data.High * 1.01,  # Placed slightly above high price
-            name="Sell Signal Marker",
+            self.data.High * 1.01,
+            name="Sell Marker",
             overlay=True,
             scatter=True,
             color="red",
         )
 
-    def weight_decision(self, df: si.SignalDf.DataFrame) -> si.SignalDirection:
-        c = si.SignalDf.Columns
-        # step 1: we check if we have a clear majority on what to do.
-        momentum = df.filter(pl.col(c.TOPOLOGY)=="momentum")
-        trend = df.filter(pl.col(c.TOPOLOGY)=="trend")
-        volatility = df.filter(pl.col(c.TOPOLOGY)=="volatility")
-        counts: dict[str, int] = dict(df["category"].value_counts().iter_rows())
-        up = counts.get("up", 0)
-        down = counts.get("down", 0)
-        if down == 0:
-            up_down_ratio = 1
-        else:
-            up_down_ratio = up / down
+    def evaluate_signals(self, idx: int) -> si.SignalDirection:
+        """Evaluates weighted multi-topology decision for a specific step index."""
+        bull_score = self.bull_scores[idx]
+        bear_score = self.bear_scores[idx]
+        total_score = bull_score + bear_score
 
-        if up == 0:
-            down_up_ratio = 1
-        else:
-            down_up_ratio = down / up
-
-        sensibility = 0.9
-        min_votes = 3
-        if up_down_ratio > sensibility and up>min_votes:
-            return si.SignalDirection.UP
-        elif down_up_ratio > sensibility and down>min_votes:
-            return si.SignalDirection.DOWN
-        else:
+        if total_score == 0:
             return si.SignalDirection.UNSPECIFIED
+
+        bull_ratio = bull_score / total_score
+        bear_ratio = bear_score / total_score
+
+        if bull_score >= self.MIN_SCORE_THRESHOLD and bull_ratio >= self.CONSENSUS_RATIO:
+            return si.SignalDirection.UP
+        elif bear_score >= self.MIN_SCORE_THRESHOLD and bear_ratio >= self.CONSENSUS_RATIO:
+            return si.SignalDirection.DOWN
+
+        return si.SignalDirection.UNSPECIFIED
 
     @override
     def next(self):
-        assert self.symbol
-        ts = self.data.index[-1]
-        sigs = self._find_signal(ts)
-        if sigs.is_empty():
+        if self.position:
             return
-        dec = self.weight_decision(sigs)
 
-        c = si.SignalDf.Columns
-        buy_sigs = (
-            sigs.filter(pl.col(c.CATEGORY).eq("up"))
-            .with_columns(pl.lit(1).alias("buy_signal"))
-            .to_pandas()
-            .set_index(c.TS)
-        )
-        sell_sigs = (
-            sigs.filter(pl.col(c.CATEGORY).eq("down"))
-            .with_columns(pl.lit(1).alias("sell_signal"))
-            .to_pandas()
-            .set_index(c.TS)
-        )
-
-        # HERE i want to put the amount of buy sell events in graph
-
+        idx = len(self.data) - 1
+        decision = self.evaluate_signals(idx)
         cl = self.data.Close[-1]
-        tp = cl * (1 + self.TP)
-        sl = cl * (1 - self.SL)
 
-        # if sigs["category"][0]=="up":
-        if dec == si.SignalDirection.UP:
-            _ = self.buy(sl=sl, tp=tp)
-            logger.info("order placed at {} for {}", ts, cl)
+        # Calculate dynamic position size risking 2% of portfolio equity per trade
+        # risk_per_trade = self.equity * 0.9# 0.02
+        # stop_distance = cl * self.SL
+        # size = int(risk_per_trade / stop_distance)
+        # size = 0.95
 
-    def _find_signal(self, ts: pendulum.DateTime) -> si.SignalDf.DataFrame:
-        c = si.SignalDf.Columns
-        return self.all_sigs.filter(
-            pl.col(c.SYMBOL).eq(self.symbol)
-            & pl.col(c.TS).le(ts)
-            & pl.col(c.TS).gt(ts - self.signal_validity)
-        )
+        if decision == si.SignalDirection.UP:
+            tp = cl * (1 + self.TP)
+            sl = cl * (1 - self.SL)
+            self.buy( sl=sl, tp=tp)
+            logger.info("BUY order placed at {} for price {}", self.data.index[-1], cl)
 
-
-class SmaCross(Strategy):
-    n1 = 10
-    n2 = 20
-
-    def init(self):
-        close = self.data.Close
-        self.sma1 = self.I(SMA, close, self.n1)
-        self.sma2 = self.I(SMA, close, self.n2)
-
-    def next(self):
-        if crossover(self.sma1, self.sma2):
-            self.position.close()
-            self.buy()
-        elif crossover(self.sma2, self.sma1):
-            self.position.close()
-            self.sell()
-
+        elif decision == si.SignalDirection.DOWN and self.SHORT_ALLOWED:
+            tp = cl * (1 - self.TP)
+            sl = cl * (1 + self.SL)
+            self.sell(sl=sl, tp=tp)
+            logger.info("SELL order placed at {} for price {}", self.data.index[-1], cl)
 
 def _rename_for_backtest(df: i.QuotesDf.DataFrame) -> pd.DataFrame:
     def rename_col(x: str) -> str:
@@ -212,7 +285,6 @@ def fees(order_size: int, price: float) -> float:
 
 
 if __name__ == "__main__":
-    symbol = "NESN.SW"
     logger.error(deps.Container.db_path())
     con = deps.Container.connection()
     start = pendulum.now() - pendulum.Duration(months=24)
@@ -239,7 +311,7 @@ if __name__ == "__main__":
             bt = Backtest(
                 backtest_data,
                 CustomStrategy,
-                cash=10000,
+                cash=1000,
                 commission=fees,  # 0.002), # swiss quotes seem to have flat commission: https://www.swissquote.com/en-ch/private/trade/pricing/securities/stocks
                 exclusive_orders=True,
             )
@@ -247,8 +319,9 @@ if __name__ == "__main__":
             output = bt.run(symbol=symbol)
             output["symbol"]=symbol
             reports.append(output.rename(symbol))
-            bt.plot(filename=f"./data/tmp_backtest_{symbol}")
+            bt.plot(filename=f"./data/tmp_backtest_{symbol}", open_browser=False)
 
-    out = pd.concat(reports, axis=1)
-    out.to_csv("./data/tmp_report.csv")
-    print(out)
+        out = pd.concat(reports, axis=1)
+        out.to_csv("./data/tmp_report.csv")
+        out.transpose().to_csv("./data/tmp_report_transposed.csv")
+        print(out)
