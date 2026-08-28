@@ -2,13 +2,13 @@ import dataclasses
 import functools
 import pathlib
 from typing import Self
+import polars as pl
+import fintools.signals.interface as si
 
 import duckdb
 import pendulum
 from loguru import logger
-from polars import DataFrame
 
-from fintools import signals
 import fintools.interface as i
 
 
@@ -86,11 +86,12 @@ class Operator:
         logger.info("Signals DDL operated. Resulting in {res}", res=res)
         return self
 
-    def upsert_signals(self, df: signals.SignalDf.DataFrame)->Self:
+    def upsert_signals(self, df: si.SignalDf.DataFrame)->Self:
         query = _signals_upsert()
         _=self.cfg.connection.register("signals_temp_df", df)
         _=self.cfg.connection.execute(query)
-        logger.info("Written {n} signals.", n=len(df))
+        desc=  df.select(pl.col(si.SignalDf.Columns.CATEGORY)).group_by(si.SignalDf.Columns.CATEGORY).count()
+        logger.info("Written {n} signals. {desc}", n=len(df), desc=desc)
         _=self.cfg.connection.unregister("signals_temp_df")
 
         return self

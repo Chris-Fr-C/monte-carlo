@@ -40,31 +40,30 @@ class EMACrossing(si.SignalInterface):
         df = df.insert_column(0, slow).insert_column(0, fast)
         df = df.with_columns(
             (
-                (pl.col(_fast) - pl.col(_slow)).sign()
-                != (pl.col(_fast).shift(1) - pl.col(_slow).shift(1)).sign()
+                (pl.col(_fast) - pl.col(_slow))
+                .sign()
+                .ne((pl.col(_fast).shift(1) - pl.col(_slow).shift(1)).sign())
             ).alias("sign_change")
         )
         df = df.with_columns(
-            ((pl.col(_fast) - pl.col(_slow)) > 0).alias("fast_goes_up")
+            ((pl.col(_fast) - pl.col(_slow)).sign()).alias("delta_sign"),
+
         )
         # Default
+        sign_changed= (pl.col("sign_change") > 0)
         df = df.with_columns(
-            pl.when((pl.col("sign_change")>0) & (pl.col("fast_goes_up")>0)).then(
-                pl.lit(si.SignalDirection.UP)
-            ).when(
-                (pl.col("sign_change")>0) & (pl.col("fast_goes_up")<0)).then(
-                pl.lit(si.SignalDirection.DOWN)
-            ).otherwise(
-                pl.lit(si.SignalDirection.UNSPECIFIED)
-            ).alias(o.CATEGORY)
-        ).with_columns(
-                pl.lit(self.name()).alias(o.NAME)
-        )
+            pl.when( sign_changed & (pl.col("delta_sign") > 0)) # fast goes up
+            .then(pl.lit(si.SignalDirection.UP))
+            .when(sign_changed & (pl.col("delta_sign") < 0)) # fast goes down
+            .then(pl.lit(si.SignalDirection.DOWN))
+            .otherwise(pl.lit(si.SignalDirection.UNSPECIFIED))
+            .alias(o.CATEGORY)
+        ).with_columns(pl.lit(self.name()).alias(o.NAME))
         # TODO: Select how to compute the confience (the slope seems a meh idea)
-        df= df.with_columns(
+        df = df.with_columns(
             pl.lit(1.0).alias(o.CONFIDENCE),
         )
-        return df.select(
+        out = df.select(
             *(pl.col(x) for x in [o.CATEGORY, o.CONFIDENCE, o.NAME, o.SYMBOL, o.TS])
         )
-        exit(244)
+        return out
