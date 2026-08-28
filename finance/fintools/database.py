@@ -137,6 +137,10 @@ class Operator:
             params=(symbol, start, end)
         ).pl(lazy=False) # Not lazy to avoid handling here the connection state.
 
+    def get_all_signals(self)->si.SignalDf.DataFrame:
+        return pl.DataFrame(
+            self.cfg.connection.sql("select * from signals").to_df(date_as_object=True)
+        )
 
 if __name__ == "__main__":
     """Run the operator with test data for demonstration."""

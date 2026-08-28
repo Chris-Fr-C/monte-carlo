@@ -8,9 +8,10 @@ import fintools.deps as deps
 
 @click.command()
 def main():
-
     cfg = deps.Container.reference()
     con = deps.Container.connection()
+    logger = deps.Container.logger()
+    logger.info("Writing data into {}", deps.Container.db_path())
     config = fetcher.Config(
         tickers = [fetcher.Stock(symbol=x["symbol"], currency=i.Currency[x["currency"]]) for x in cfg["stocks"]],
         start = pendulum.DateTime.fromisoformat(cfg["start_date"]).in_timezone("Europe/Zurich")

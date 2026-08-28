@@ -19,7 +19,7 @@ def _ref_path()->pathlib.Path:
     return default
 
 class Container(containers.DeclarativeContainer):
-    db_path: providers.Singleton[pathlib.Path] = providers.Singleton(pathlib.Path, os.environ.get("FINTOOLS_DB_FILE", "./fintools.duckdb"))
+    db_path: providers.Singleton[pathlib.Path] = providers.Singleton(pathlib.Path, os.environ.get("FINTOOLS_DB_FILE", "./data/fintools.duckdb"))
     connection: providers.Factory[duckdb.DuckDBPyConnection] = providers.Factory(duckdb.connect, database=db_path)
     reference_path:providers.Object[pathlib.Path] = providers.Object(
             _ref_path()
