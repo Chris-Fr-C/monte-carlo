@@ -1,0 +1,4 @@
+$schema: "./reference-schema.yaml"
+stocks:
+  - symbol: NESN.SW
+    currency: CHF

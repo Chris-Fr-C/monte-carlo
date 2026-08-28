@@ -1,0 +1,25 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: StockPortfolio
+type: object
+required:
+  - stocks
+properties:
+  stocks:
+    type: array
+    description: A list of stock entries in the portfolio
+    items:
+      type: object
+      required:
+        - symbol
+        - currency
+      properties:
+        symbol:
+          type: string
+          description: Stock ticker symbol (e.g., AAPL)
+          pattern: "^[A-Z0-9.-]+$"
+        currency:
+          type: string
+          description: ISO 4217 currency code (e.g., USD)
+          minLength: 3
+          maxLength: 3
+      additionalProperties: false

@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: '3'
+
+vars:
+  DB_FILE: "{{.TASKFILE_DIR}}/data/fintools.duckdb"
+  REF_FILE: "{{.TASKFILE_DIR}}/data/reference.yaml"
+
+
+tasks:
+  data:fetch:
+    desc: "Get historical data"
+    cmds:
+      - |
+        uv run fintools/scripts/fetch --reference "{{.REF_FILE}}" --db "{{.DB_FILE}}"
+    silent: false
+
+
+  duckdb:ui:
+    desc: Install and launch duckdb ui.
+    cmds:
+      - |
+        echo "You will have to exit the process with ctrl+d to close the ui."
+        duckdb -cmd "INSTALL ui; LOAD ui; CALL start_ui();" {{.DB_FILE}}
+    silent: false

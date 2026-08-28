@@ -5,6 +5,8 @@ description = "My finance tool poc"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "ckdl>=1.0",
+    "click>=8.5.0",
     "duckdb>=1.5.5",
     "isodate>=0.7.2",
     "loguru>=0.7.3",
@@ -13,6 +15,7 @@ dependencies = [
     "polars[lazy]>=1.44.1",
     "pyarrow>=25.0.1",
     "pytzdata>=2020.1",
+    "pyyaml>=6.0.3",
     "ta>=0.11.0",
     "yfinance>=1.7.0",
 ]
