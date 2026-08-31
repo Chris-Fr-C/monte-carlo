@@ -3,13 +3,14 @@ import functools
 import pathlib
 from typing import Self
 import polars as pl
-import fintools.signals.interface as si
+import pandera as pa
+import pandera.typing.polars as pat
+import fintools.schemas as s
 
 import duckdb
 import pendulum
 from loguru import logger
 
-import fintools.interface as i
 
 
 @dataclasses.dataclass
@@ -26,19 +27,13 @@ class Config:
 
 
 @functools.lru_cache()
-def _signals_ddl() -> str:
-    script = pathlib.Path(__file__).parent / "schemas" / "setup-signals.sql"
-    with open(script, "r") as fi:
-        return fi.read()
-
-@functools.lru_cache()
-def _ddl() -> str:
+def _ddl_quotes() -> str:
     """Load the database schema definition language from setup.sql.
 
     Returns:
         The SQL DDL script content from the schemas/setup.sql file.
     """
-    script = pathlib.Path(__file__).parent / "schemas" / "setup.sql"
+    script = pathlib.Path(__file__).parent / "schemas" / "quotes-setup.sql"
     with open(script, "r") as fi:
         return fi.read()
 
@@ -53,11 +48,6 @@ def _quotes_upsert() -> str:
     with open(script, "r") as fi:
         return fi.read()
 
-def _signals_upsert() -> str:
-    script = pathlib.Path(__file__).parent / "schemas" / "signals-upsert.sql"
-    with open(script, "r") as fi:
-        return fi.read()
-
 
 @dataclasses.dataclass
 class Operator:
@@ -69,7 +59,7 @@ class Operator:
 
     cfg: Config
     def __post_init__(self):
-        self.init()
+        _=self.init()
 
     def init(self) -> Self:
         """Initialize the database by executing schema definition language.
@@ -79,24 +69,12 @@ class Operator:
         Returns:
             Self for method chaining.
         """
-        res = self.cfg.connection.sql(query=_ddl())
+        res = self.cfg.connection.sql(query=_ddl_quotes())
         logger.info("Quotes DDL operated. Resulting in {res}", res=res)
-
-        res = self.cfg.connection.sql(query=_signals_ddl())
-        logger.info("Signals DDL operated. Resulting in {res}", res=res)
         return self
 
-    def upsert_signals(self, df: si.SignalDf.DataFrame)->Self:
-        query = _signals_upsert()
-        _=self.cfg.connection.register("signals_temp_df", df)
-        _=self.cfg.connection.execute(query)
-        desc=  df.select(pl.col(si.SignalDf.Columns.CATEGORY)).group_by(si.SignalDf.Columns.CATEGORY).count()
-        logger.info("Written {n} signals. {desc}", n=len(df), desc=desc)
-        _=self.cfg.connection.unregister("signals_temp_df")
 
-        return self
-
-    def upsert(self, df: i.QuotesDf.DataFrame) -> Self:
+    def upsert(self, df: pat.DataFrame[s.Quotes]) -> Self:
         """Perform an upsert operation on quotes data using DuckDB.
 
         Registers the dataframe as a temporary table and executes the upsert SQL query.
@@ -121,11 +99,11 @@ class Operator:
         return self
 
     def get(
-        self, symbol: i.Symbol, start: pendulum.DateTime, end: pendulum.DateTime
-    ) -> i.QuotesDf.DataFrame:
+        self, symbol: s.Symbol, start: pendulum.DateTime, end: pendulum.DateTime
+    ) -> pat.DataFrame[s.Quotes]:
         assert start.timezone is not None, "Dates must be timezone aware."
         assert end.timezone is not None, "Dates must be timezone aware."
-        return self.cfg.connection.sql(
+        unvalidated= self.cfg.connection.sql(
             """
             SELECT * FROM quotes
             WHERE
@@ -136,17 +114,14 @@ class Operator:
             """,
             params=(symbol, start, end)
         ).pl(lazy=False) # Not lazy to avoid handling here the connection state.
-
-    def get_all_signals(self)->si.SignalDf.DataFrame:
-        return pl.DataFrame(
-            self.cfg.connection.sql("select * from signals").to_df(date_as_object=True)
-        )
+        return pat.DataFrame[s.Quotes](unvalidated)
 
 if __name__ == "__main__":
     """Run the operator with test data for demonstration."""
     import polars as pl
 
     cfg = Config(duckdb.connect("tmp_db.duckdb"))
-    df = pl.read_csv("tmp_test_data.csv")
+    df = pat.DataFrame[s.Quotes](pl.read_csv("tmp_test_data.csv"))
+
     with cfg.connection:
         _ = Operator(cfg).init().upsert(df)

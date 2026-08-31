@@ -17,19 +17,6 @@ tasks:
         uv run fintools/scripts/fetch.py
     silent: false
 
-  data:make-signals:
-    desc: "Build historical signals (slow)"
-    cmds:
-      - |
-         uv run fintools/scripts/make_signals.py
-    silent: false
-
-  data:backtest:
-    desc: "Runs some backtest"
-    cmds:
-      - |
-        uv run fintools/backtesting/evaluation.py
-    silent: false
 
   duckdb:ui:
     desc: Install and launch duckdb ui.

@@ -9,7 +9,7 @@ from typing import NamedTuple
 import pendulum
 
 
-import fintools.interface as c
+import fintools.schemas as s
 import polars as pl
 import pandas as pd
 import yfinance
@@ -28,8 +28,8 @@ class Stock(NamedTuple):
         Stock(symbol='NESN.SW', currency=Currency.CHF)
     """
 
-    symbol: c.Symbol
-    currency: c.Currency
+    symbol: s.Symbol
+    currency: s.Currency
 
 
 
@@ -86,30 +86,30 @@ class YahooDownloader:
         assert not data.empty
         # that data has a multi index which is annoying. I prefer to normalize that instead.
         df_flat = data.stack(level=1, future_stack=True).reset_index()
-        symbol_currencies: dict[c.Symbol, c.Currency] = {
+        symbol_currencies: dict[s.Symbol, s.Currency] = {
             x.symbol: x.currency for x in self.cfg.tickers
         }
         pl_df = pl.from_pandas(df_flat).rename(
             {
-                "Ticker": c.QuotesDf.Columns.SYMBOL,
-                "Open": c.QuotesDf.Columns.OPEN,
-                "High": c.QuotesDf.Columns.HIGH,
-                "Low": c.QuotesDf.Columns.LOW,
-                "Close": c.QuotesDf.Columns.CLOSE,
-                "Volume": c.QuotesDf.Columns.VOLUME,
-                "Dividends": c.QuotesDf.Columns.DIVIDENDS,
-                "Stock Splits": c.QuotesDf.Columns.STOCK_SPLITS,
-                "Date": c.QuotesDf.Columns.TS,
+                "Ticker": s.Quotes.symbol,
+                "Open": s.Quotes.open,
+                "High": s.Quotes.high,
+                "Low": s.Quotes.low,
+                "Close": s.Quotes.close,
+                "Volume": s.Quotes.volume,
+                "Dividends": s.Quotes.dividends,
+                "Stock Splits": s.Quotes.stock_splits,
+                "Date": s.Quotes.ts,
             }
         )
         pl_df = pl_df.with_columns(
-            pl.col(c.QuotesDf.Columns.SYMBOL).replace(symbol_currencies).alias(c.QuotesDf.Columns.CURRENCY)
+            pl.col(s.Quotes.symbol).replace(symbol_currencies).alias(s.Quotes.currency)
         )
 
         return pl_df
 
 
 if __name__ == "__main__":
-    d = YahooDownloader(Config([Stock("NESN.SW", c.Currency.CHF)])).fetch()
+    d = YahooDownloader(Config([Stock("NESN.SW", s.Currency.CHF)])).fetch()
     d.write_csv("tmp_test_data.csv")
     print(d)
