@@ -9,7 +9,7 @@ from typing import NamedTuple
 import pendulum
 
 
-import fintools.schemas as s
+import fintools.core as s
 import polars as pl
 import pandas as pd
 import yfinance

@@ -3,7 +3,7 @@ name = "fintools"
 version = "0.1.0"
 description = "My finance tool poc"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "backtesting>=0.6.6",
     "ckdl>=1.0",
@@ -14,14 +14,16 @@ dependencies = [
     "loguru>=0.7.3",
     "pandas>=3.0.5",
     "pandas-stubs>=3.0.5.260730",
-    "pandera[full,polars]>=0.33.0",
+    "pandera[polars]>=0.33.0",
     "pendulum>=3.2.0",
-    "polars[lazy]>=1.44.1",
+    "plotly<6.0", # https://github.com/polakowo/vectorbt/issues/769
+    "polars>=1.44.1",
     "pyarrow>=25.0.1",
     "pytzdata>=2020.1",
     "pyyaml>=6.0.3",
     "seaborn>=0.13.2",
     "ta>=0.11.0",
+    "vectorbt[full,rust]>=1.0.0",
     "yfinance>=1.7.0",
 ]
 

@@ -1,25 +1,23 @@
 import click
 import pendulum
 import pandera.typing.polars as pat
-import fintools.database as database
+import fintools.core as c
 import fintools.fetcher as fetcher
-import fintools.schemas as s
-import fintools.deps as deps
 
 @click.command()
 def main():
-    cfg = deps.Container.reference()
-    con = deps.Container.connection()
-    logger = deps.Container.logger()
-    logger.info("Writing data into {}", deps.Container.db_path())
+    cfg = c.Container.reference()
+    con = c.Container.connection()
+    logger = c.Container.logger()
+    logger.info("Writing data into {}", c.Container.db_path())
     config = fetcher.Config(
-        tickers = [fetcher.Stock(symbol=x["symbol"], currency=s.Currency[x["currency"]]) for x in cfg["stocks"]],
+        tickers = [fetcher.Stock(symbol=x["symbol"], currency=c.Currency[x["currency"]]) for x in cfg["stocks"]],
         start = pendulum.DateTime.fromisoformat(cfg["start_date"]).in_timezone("Europe/Zurich")
     )
-    df = pat.DataFrame[s.Quotes](fetcher.YahooDownloader(config).fetch())
+    df = pat.DataFrame[c.Quotes](fetcher.YahooDownloader(config).fetch())
     with con:
-        crud = database.Operator(
-            database.Config(
+        crud = c.DbOperator(
+            c.DbConfig(
                 con
             )
         )

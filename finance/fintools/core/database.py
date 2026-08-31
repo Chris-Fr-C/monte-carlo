@@ -3,9 +3,8 @@ import functools
 import pathlib
 from typing import Self
 import polars as pl
-import pandera as pa
 import pandera.typing.polars as pat
-import fintools.schemas as s
+import fintools.core.schemas as s
 
 import duckdb
 import pendulum
@@ -14,7 +13,7 @@ from loguru import logger
 
 
 @dataclasses.dataclass
-class Config:
+class DbConfig:
     """Configuration for the database connection.
 
     Attributes:
@@ -33,7 +32,7 @@ def _ddl_quotes() -> str:
     Returns:
         The SQL DDL script content from the schemas/setup.sql file.
     """
-    script = pathlib.Path(__file__).parent / "schemas" / "quotes-setup.sql"
+    script = pathlib.Path(__file__).parent.parent / "schemas" / "quotes-setup.sql"
     with open(script, "r") as fi:
         return fi.read()
 
@@ -44,20 +43,27 @@ def _quotes_upsert() -> str:
     Returns:
         The SQL upsert query content from the schemas/quotes-upsert.sql file.
     """
-    script = pathlib.Path(__file__).parent / "schemas" / "quotes-upsert.sql"
+    script = pathlib.Path(__file__).parent.parent / "schemas" / "quotes-upsert.sql"
     with open(script, "r") as fi:
         return fi.read()
 
 
 @dataclasses.dataclass
-class Operator:
+class DbOperator:
     """Database operator for managing quotes data upsert operations.
 
     Attributes:
         cfg: Configuration instance containing the database connection.
     """
 
-    cfg: Config
+    cfg: DbConfig
+
+    def __enter__(self):
+        return self.cfg.connection.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self.cfg.connection.__exit__(exc_type, exc_val, exc_tb)
+
     def __post_init__(self):
         _=self.init()
 
@@ -103,6 +109,7 @@ class Operator:
     ) -> pat.DataFrame[s.Quotes]:
         assert start.timezone is not None, "Dates must be timezone aware."
         assert end.timezone is not None, "Dates must be timezone aware."
+        assert start <= end, "Invalid interval."
         unvalidated= self.cfg.connection.sql(
             """
             SELECT * FROM quotes
@@ -120,8 +127,8 @@ if __name__ == "__main__":
     """Run the operator with test data for demonstration."""
     import polars as pl
 
-    cfg = Config(duckdb.connect("tmp_db.duckdb"))
+    cfg = DbConfig(duckdb.connect("tmp_db.duckdb"))
     df = pat.DataFrame[s.Quotes](pl.read_csv("tmp_test_data.csv"))
 
     with cfg.connection:
-        _ = Operator(cfg).init().upsert(df)
+        _ = DbOperator(cfg).init().upsert(df)
